@@ -1,101 +1,60 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NewsSense - Why Is My Fund Down?</title>
+  <title>Fund Search</title>
   <style>
-    body {
-      background-color: #121212;
-      color: #f1f1f1;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0 2rem;
-    }
-    h1 {
-      text-align: center;
-      margin-top: 2rem;
-      font-size: 2rem;
-      color: #66fcf1;
-    }
-    form {
-      text-align: center;
-      margin: 2rem 0;
-    }
-    input[type="text"] {
-      padding: 0.6rem 1rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: none;
-      width: 60%;
-    }
-    button {
-      padding: 0.6rem 1.2rem;
-      margin-left: 1rem;
-      font-size: 1rem;
-      border: none;
-      border-radius: 8px;
-      background-color: #45a29e;
-      color: white;
-      cursor: pointer;
-    }
-    .news-card {
-      background-color: #1f1f1f;
-      border: 1px solid #2d2d2d;
-      padding: 1rem;
-      border-radius: 12px;
-      margin-bottom: 1rem;
-      transition: all 0.3s ease;
-    }
-    .news-card:hover {
-      background-color: #2d2d2d;
-    }
-    .headline {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-      color: #ffffff;
-    }
-    .meta {
-      font-size: 0.9rem;
-      color: #bbbbbb;
-    }
-    .no-result {
-      text-align: center;
-      margin-top: 2rem;
-      font-style: italic;
-      color: #888;
-    }
+    body { font-family: Arial; background: #121212; color: #f0f0f0; padding: 2rem; }
+    input, button { padding: 10px; margin: 10px; }
+    table { width: 100%; background: #1f1f1f; border-collapse: collapse; }
+    th, td { border: 1px solid #444; padding: 10px; text-align: left; }
+    th { background-color: #222; color: #00ffcc; }
+    a { color: #00ccff; }
   </style>
 </head>
 <body>
-  <h1>📉 NewsSense</h1>
+  <h1>🔍 Mutual Fund Finder</h1>
 
-  <form action="/search" method="POST">
-    <input type="text" name="query" placeholder="Why is my fund down?" required />
+  <form method="POST" action="/search">
+    <input type="text" name="query" placeholder="Enter Fund Name" value="<%= query || '' %>" />
     <button type="submit">Search</button>
   </form>
 
-  <% if (query) { %>
-    <h2>📰 News related to "<%= query %>"</h2>
-
-    <% if (news && news.length > 0) { %>
-      <% news.forEach(item => { %>
-        <div class="news-card">
-          <div class="headline"><%= item.Headline %></div> <!-- FIXED: changed from title to Headline -->
-          <div class="meta">
-            🔗 Related Fund: <strong><%= item.matchedEntity.Name %></strong>
-            (<%= item.matchedEntity.Ticker %> | <%= item.matchedEntity.ISIN %>)
-            | 🔍 Match Score: <%= item.score %>
-          </div>
-        </div>
-      <% }) %>
-    <% } else { %>
-      <p class="no-result">No news matched your search query.</p>
-    <% } %>
+  <% if (matches.length > 0) { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>AUM</th>
+          <th>NAV</th>
+          <th>Risk</th>
+          <th>Type</th>
+          <th>1Y Return</th>
+          <th>3Y Return</th>
+          <th>5Y Return</th>
+          <th>Link</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% matches.forEach(match => { %>
+          <tr>
+            <td><%= match.name %></td>
+            <td><%= match.aum %></td>
+            <td><%= match.nav %></td>
+            <td><%= match.risk %></td>
+            <td><%= match.type %></td>
+            <td><%= match.returns_1y %></td>
+            <td><%= match.returns_3y %></td>
+            <td><%= match.returns_5y %></td>
+            <td><a href="<%= match.link %>" target="_blank">View</a></td>
+            <td><%= match.score %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else if (query) { %>
+    <p>No match found for "<%= query %>"</p>
   <% } %>
 </body>
 </html>
-
-
-
-

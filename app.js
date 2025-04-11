@@ -11,96 +11,62 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
-let entities = [];
+let schemes = [];
 
-// Load entity metadata from CSV
-fs.createReadStream(path.join(__dirname, "data/entities.csv"))
+fs.createReadStream(path.join(__dirname, "data/data.csv"))
   .pipe(csv())
-  .on("data", (row) => entities.push(row))
+  .on("data", (row) => schemes.push(row))
   .on("end", () => {
-    console.log("✅ Entities loaded");
+    console.log("✅ Schemes loaded:", schemes.length);
+    console.log("🔎 Sample:", schemes.slice(0, 2));
   });
 
-// Home route – just renders the UI with no crash
+// Home page
 app.get("/", (req, res) => {
-  const searchQuery = req.query.search ? req.query.search.toLowerCase() : "";
-  let headlines = [];
-
-  try {
-    headlines = JSON.parse(fs.readFileSync(path.join(__dirname, "data/headlines.json")));
-  } catch (err) {
-    console.error("❌ Error loading headlines:", err.message);
-  }
-
-  const filtered = searchQuery
-    ? headlines.filter(item =>
-        item.Headline && item.Headline.toLowerCase().includes(searchQuery)
-      )
-    : [];
-
-  res.render("news-feed", {
-    results: null,
-    query: searchQuery,
-    news: filtered,
-  });
+  res.render("news-feed", { query: null, matches: [] });
 });
 
 // Search route
 app.post("/search", (req, res) => {
   const { query } = req.body;
-  let headlines = [];
+  const threshold = 70;
 
-  try {
-    headlines = JSON.parse(fs.readFileSync(path.join(__dirname, "data/headlines.json")));
-  } catch (err) {
-    console.error("❌ Error loading headlines:", err.message);
-    return res.render("news-feed", { results: [], query, news: [] });
+  if (!query) {
+    return res.render("news-feed", { query, matches: [] });
   }
 
-  const results = [];
+  const userQuery = query.toString().toLowerCase().trim();
+  const matches = [];
 
-  // Step 1: Fuzzy match with entity data
-  let bestMatch = { entity: null, score: 0 };
-  entities.forEach((entity) => {
-    const keys = [entity.Name, entity.Ticker, entity.ISIN];
-    keys.forEach((key) => {
-      if (key) {
-        const score = fuzz.token_set_ratio(query, key);
-        if (score > bestMatch.score) {
-          bestMatch = { entity, score };
-        }
+  console.log("🔍 Searching for:", userQuery);
+
+  // Fuzzy match on fund name
+  schemes.forEach((s) => {
+    const fundName = s.name_of_the_fund?.toLowerCase().trim();
+
+    if (fundName) {
+      const score = fuzz.token_set_ratio(userQuery, fundName);
+      if (score >= threshold) {
+        matches.push({
+          name: s.name_of_the_fund,
+          aum: s.aum_funds_individual_lst || "N/A",
+          nav: s.nav_funds_individual_lst || "N/A",
+          risk: s.risk_of_the_fund || "N/A",
+          type: s.type_of_fund || "N/A",
+          returns_1y: s.one_year_returns || "N/A",
+          returns_3y: s.three_year_returns || "N/A",
+          returns_5y: s.five_year_returns || "N/A",
+          link: s.link_of_the_funds || "#",
+          score,
+        });
       }
-    });
+    }
   });
 
-  if (bestMatch.score < 85 || !bestMatch.entity) {
-    return res.render("news-feed", { results: [], query, news: [] });
-  }
-
-  // Step 2: Match headlines by checking for name/ticker/isin inside the text
-  const relevantNews = headlines
-    .filter((headline) => {
-      const text = headline.Headline.toLowerCase();
-
-      return (
-        text.includes(bestMatch.entity.Name.toLowerCase()) ||
-        text.includes(bestMatch.entity.Ticker.toLowerCase()) ||
-        text.includes(bestMatch.entity.ISIN.toLowerCase())
-      );
-    })
-    .map((headline) => ({
-      ...headline,
-      matchedEntity: bestMatch.entity,
-      score: bestMatch.score,
-    }));
-
-  res.render("news-feed", {
-    results: [{ matchedEntity: bestMatch.entity, score: bestMatch.score }],
-    query,
-    news: relevantNews,
-  });
+  res.render("news-feed", { query, matches });
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
